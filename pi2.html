@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>아르키메데스의 원주율 근사</title>
+    <script type="text/javascript" async
+      src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/decimal.js/10.4.3/decimal.min.js"></script>
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$']]
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background-color: #f0f2f5;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .container {
+            background-color: #fff;
+            padding: 30px 40px;
+            border-radius: 12px;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 900px;
+            margin-bottom: 20px;
+        }
+
+        .input-section {
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .input-section label {
+            font-size: 1.1em;
+            color: #555;
+        }
+
+        .input-section input[type="number"] {
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+            width: 100px; /* 너비 조정 */
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
+            transition: border-color 0.3s ease;
+        }
+
+        .input-section input[type="number"]:focus {
+            border-color: #007bff;
+            outline: none;
+        }
+
+        canvas {
+            border: 2px solid #ccc;
+            background-color: #fff;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+            border-radius: 8px;
+            margin-top: 20px;
+            width: 500px; /* 고정 크기 */
+            height: 500px; /* 고정 크기 */
+        }
+        
+        /* 새로운 비교 박스 스타일 */
+        .pi-comparison-display {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            width: 100%;
+            margin-top: 30px;
+            background-color: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .pi-comparison-display .bound-section {
+            flex: 1;
+            padding: 0 10px;
+            text-align: left;
+        }
+
+        .pi-comparison-display .bound-section h4 {
+            color: #007bff;
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+            text-align: center;
+        }
+
+        .pi-comparison-display .pi-value-display {
+            font-size: 1.1em;
+            color: #333;
+            word-wrap: break-word;
+        }
+
+        .pi-comparison-display .pi-value-display .match {
+            color: red;
+            font-weight: bold;
+        }
+        .pi-value-display .indent {
+            margin-left: 20px;
+            display: inline-block;
+        }
+        .pi-comparison-display .separator {
+            font-size: 2em;
+            font-weight: bold;
+            color: #555;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 15px;
+        }
+
+
+        .info {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #e9f7ef;
+            border-left: 5px solid #28a745;
+            border-radius: 8px;
+            text-align: left;
+            max-width: 900px;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        .info h3 {
+            color: #28a745;
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+
+        .info ul {
+            list-style-type: disc;
+            margin-left: 20px;
+            padding-left: 0;
+        }
+
+        .info li {
+            margin-bottom: 5px;
+        }
+
+        .info strong {
+            color: #007bff;
+        }
+    </style>
+</head>
+<body>
+    <h1>아르키메데스의 방법으로 원주율($\pi$) 범위 좁히기</h1>
+
+    <div class="container">
+        <div class="input-section">
+            <label for="num-sides">정n각형의 변의 개수 (n):</label>
+            <input type="number" id="num-sides" value="6" min="3">
+            <label for="decimal-precision">소수점 정밀도:</label>
+            <input type="number" id="decimal-precision" value="4" min="0">
+        </div>
+
+        <canvas id="geometryCanvas" width="500" height="500"></canvas>
+
+        <div class="pi-comparison-display">
+            <div class="bound-section">
+                <h4>$\pi$ 하한 (내접 다각형)</h4>
+                <div class="pi-value-display" id="pi-lower-display">0.0000</div>
+            </div>
+            <div class="separator">&lt; $\pi$ &lt;</div>
+            <div class="bound-section">
+                <h4>$\pi$ 상한 (외접 다각형)</h4>
+                <div class="pi-value-display" id="pi-upper-display">0.0000</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="info">
+        <h3>아르키메데스의 원주율 근사 원리</h3>
+        <ul>
+            <li>아르키메데스는 원의 둘레가 그 원에 **내접하는 정다각형의 둘레**보다는 길고, **외접하는 정다각형의 둘레**보다는 짧다는 사실을 이용했습니다.</li>
+            <li>정다각형의 변의 개수(n)를 늘려갈수록 내접/외접 정다각형의 둘레는 원의 둘레에 점점 더 가까워집니다.</li>
+            <li>반지름이 $r$인 원의 둘레는 $2\pi r$ 입니다. 우리는 이 실험에서 반지름 $r=1$인 단위원으로 계산하여 원의 둘레를 $2\pi$로 간주합니다.</li>
+            <li>따라서, 내접 정n각형 둘레 $L_{in}$ 과 외접 정n각형 둘레 $L_{out}$ 에 대해 다음 관계가 성립합니다:
+                $$L_{in} < 2\pi < L_{out}$$
+            </li>
+            <li>이를 통해 $\pi$의 범위를 다음과 같이 계산할 수 있습니다:
+                $$\frac{L_{in}}{2} < \pi < \frac{L_{out}}{2}$$
+            </li>
+            <li>변의 개수 $n$이 증가할수록 $\frac{L_{in}}{2}$는 증가하고 $\frac{L_{out}}{2}$는 감소하여 $\pi$의 범위를 점차 좁혀나가는 것을 확인할 수 있습니다.</li>
+            <li>**내접 정n각형의 한 변의 길이:** $s_{in} = 2r \sin(\frac{\pi}{n})$</li>
+            <li>**외접 정n각형의 한 변의 길이:** $s_{out} = 2r \tan(\frac{\pi}{n})$</li>
+            <li>따라서,
+                $$L_{in} = n \times s_{in} = n \cdot 2r \sin(\frac{\pi}{n})$$
+                $$L_{out} = n \times s_{out} = n \cdot 2r \tan(\frac{\pi}{n})$$
+                (여기서 $r=1$이므로 $L_{in} = 2n \sin(\frac{\pi}{n})$, $L_{out} = 2n \tan(\frac{\pi}{n})$)
+            </li>
+            <li>**20자리 줄바꿈**: 소수점 이하의 자릿수들을 20자리씩 끊어서 줄 바꿈하여 가독성을 높였습니다.</li>
+            <li>**색상 표기**: 계산된 $\pi$ 하한 값과 $\pi$ 상한 값을 비교하여, 두 값 사이에 일치하는 정수 부분과 소수점 부분의 자릿수를 붉은색으로 표시합니다. 불일치가 발생하는 첫 번째 지점까지만 붉게 표시되므로, 근사 정확도를 시각적으로 쉽게 파악할 수 있습니다.</li>
+        </ul>
+    </div>
+
+    <script>
+        // Decimal.js의 정밀도를 충분히 높게 설정 (최대 표시 정밀도 + 안전 여유)
+        Decimal.set({ precision: 500 }); 
+
+        // 미리 정의된 고정밀 PI 값 (수백자리)
+        const HIGH_PRECISION_PI_STRING = '3.14159265358979323846264338327950288419716939937510582097494459230781640628620899862803482534211706798214808651328230664709384460955058223172535940812848111745028410270193852110555964462294895493038196442881097566593344612847564823378678316527120190914564856692346034861045432664821339360726024914127372458700660631558817488152092096282925409171536436789259036001133053054882046652138414695194151160943305727036575959195309218611738193261179310511854807446237996274956735188575272489122793818301194912983367336244065664308602139494639522473719070217986094370277053921717629317675238467481846766940513200056812714526356082778577134275778960917363717872146844090122495343014654958537105079227968925892354201995611212902196086403441815981362977477130996051870721134999999837297804995105973173281609631859502445534690830264252230825334468503526193118817101000313783875288658753320838142061717766914730359825349042875546873115956286388235378759375195778185778053217122680661300192787661119590921642019893809525720106548586327886593615338182796823030195203530185296899577362259941389124972177528347913151557485724245415069595082953311686172785588907509838175463746493931925506040092770167113900984882401285836160356370766010471018194295559619894676783744944825537977472684710404753464620804668425906949129331367702898915210475216205696602405803815019351125338243003558764024749647326391419927260426992279678235478163600934172164121992458631503028618297455570674983850549458858692699569092721079750930295532116534498720275596023648066549911988183479775356636980742654252786255181841757467289097777279380008164706001614524919217321721477235014144197356854816136115735255213347574184946843852332390739414333454776241686251898356948556209921922218427255025425688767179049460165346680498862723279178608578438382796797668145410095388378636095068006422512520511739298489608412848862694560424196528502221066118630674427862203919494504712371378609506438445100975667104085449704780610970957599767852331599370420510112703816733620300915649934479904723402534443224971755353893755086994361567210881615967005129312961744652468725841047209727807185447162796033388540846236287955519888992176510807983568852909180705113562725899400426341829705942460144933955437807759146199343812574504639016104993132783451060935574023902718861021718054605999863414983273180470559799505';
+        const actualPiDecimal = new Decimal(HIGH_PRECISION_PI_STRING);
+
+        // --- 두 값 비교, 색상 표시, 20자리 줄바꿈 함수 ---
+        function formatAndHighlightBounds(lowerBoundStr, upperBoundStr, digitsPerLine = 20) {
+            let lowerHtml = '';
+            let upperHtml = '';
+            
+            const lowerParts = lowerBoundStr.split('.');
+            const upperParts = upperBoundStr.split('.');
+
+            const lowerInt = lowerParts[0];
+            const lowerDec = lowerParts[1] || '';
+            const upperInt = upperParts[0];
+            const upperDec = upperParts[1] || '';
+
+            let firstMismatchIndexInt = -1;
+            // 정수 부분에서 첫 불일치 지점 찾기
+            for (let i = 0; i < Math.min(lowerInt.length, upperInt.length); i++) {
+                if (lowerInt[i] !== upperInt[i]) {
+                    firstMismatchIndexInt = i;
+                    break;
+                }
+            }
+            if (firstMismatchIndexInt === -1 && lowerInt.length !== upperInt.length) {
+                firstMismatchIndexInt = Math.min(lowerInt.length, upperInt.length);
+            }
+
+
+            // 1. 정수 부분 비교 및 하이라이팅
+            for (let i = 0; i < lowerInt.length; i++) {
+                if (firstMismatchIndexInt === -1 || i < firstMismatchIndexInt) {
+                    lowerHtml += `<span class="match">${lowerInt[i]}</span>`;
+                } else {
+                    lowerHtml += lowerInt[i];
+                }
+            }
+            for (let i = 0; i < upperInt.length; i++) {
+                if (firstMismatchIndexInt === -1 || i < firstMismatchIndexInt) {
+                    upperHtml += `<span class="match">${upperInt[i]}</span>`;
+                } else {
+                    upperHtml += upperInt[i];
+                }
+            }
+
+            // 소수점이 있으면 추가
+            if (lowerBoundStr.includes('.')) lowerHtml += '.';
+            if (upperBoundStr.includes('.')) upperHtml += '.';
+
+            let firstMismatchIndexDec = -1;
+            // 소수 부분에서 첫 불일치 지점 찾기
+            for (let i = 0; i < Math.min(lowerDec.length, upperDec.length); i++) {
+                if (lowerDec[i] !== upperDec[i]) {
+                    firstMismatchIndexDec = i;
+                    break;
+                }
+            }
+
+            // 2. 소수 부분 비교 및 하이라이팅, 그리고 줄바꿈
+            for (let i = 0; i < lowerDec.length; i++) {
+                if (i > 0 && i % digitsPerLine === 0) {
+                    lowerHtml += `<br><span class="indent"></span>`;
+                }
+                if (firstMismatchIndexDec === -1 || i < firstMismatchIndexDec) {
+                    lowerHtml += `<span class="match">${lowerDec[i]}</span>`;
+                } else {
+                    lowerHtml += lowerDec[i];
+                }
+            }
+
+            for (let i = 0; i < upperDec.length; i++) {
+                if (i > 0 && i % digitsPerLine === 0) {
+                    upperHtml += `<br><span class="indent"></span>`;
+                }
+                if (firstMismatchIndexDec === -1 || i < firstMismatchIndexDec) {
+                    upperHtml += `<span class="match">${upperDec[i]}</span>`;
+                } else {
+                    upperHtml += upperDec[i];
+                }
+            }
+
+            return { lower: lowerHtml, upper: upperHtml };
+        }
+
+        const canvas = document.getElementById('geometryCanvas');
+        const ctx = canvas.getContext('2d');
+        const canvasSize = canvas.width; // 500
+        const radius = new Decimal(canvasSize / 2).mul(0.8); // 캔버스 크기의 80%를 반지름으로 사용 (여백)
+        const centerX = canvasSize / 2;
+        const centerY = canvasSize / 2;
+
+        function drawShapes(n) {
+            ctx.clearRect(0, 0, canvasSize, canvasSize);
+
+            // 원 그리기
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius.toNumber(), 0, Math.PI * 2, false);
+            ctx.strokeStyle = '#3498db'; // 파란색
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // 내접 정n각형 그리기 (초기 각도 보정: 12시 방향에서 시작하도록 -PI/2)
+            ctx.beginPath();
+            ctx.strokeStyle = '#e74c3c'; // 붉은색
+            ctx.lineWidth = 2;
+            for (let i = 0; i < n; i++) {
+                const angle = (Math.PI * 2 / n) * i - Math.PI / 2;
+                const x = centerX + radius.toNumber() * Math.cos(angle);
+                const y = centerY + radius.toNumber() * Math.sin(angle);
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            }
+            ctx.closePath();
+            ctx.stroke();
+
+            // --- 원의 중심에서 내접다각형 꼭짓점까지 선 그리기 추가 ---
+            ctx.beginPath();
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)'; // 투명한 회색 선
+            ctx.lineWidth = 0.8; // 얇은 선
+            for (let i = 0; i < n; i++) {
+                const angle = (Math.PI * 2 / n) * i - Math.PI / 2;
+                const x = centerX + radius.toNumber() * Math.cos(angle);
+                const y = centerY + radius.toNumber() * Math.sin(angle);
+                ctx.moveTo(centerX, centerY);
+                ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+            // --------------------------------------------------------
+
+            // 외접 정n각형 그리기
+            ctx.beginPath();
+            ctx.strokeStyle = '#28a745'; // 초록색
+            ctx.lineWidth = 2;
+
+            // Math.PI 대신 Decimal.js의 PI를 사용하여 각도 계산 (정밀도 유지)
+            const anglePerSide = Decimal.acos(new Decimal(-1)).div(n); // Decimal.acos(-1)은 Decimal.PI
+            const outerRadius = radius.div(Decimal.cos(anglePerSide)); // Decimal.js의 cos 함수 사용
+
+            for (let i = 0; i < n; i++) {
+                // 도형 그리기에는 Math.PI 사용 (canvas API는 Decimal 객체 직접 지원 안함)
+                const angle1 = (Math.PI * 2 / n) * i - Math.PI / 2;
+                const angle2 = (Math.PI * 2 / n) * (i + 1) - Math.PI / 2;
+
+                const x1 = centerX + outerRadius.toNumber() * Math.cos(angle1);
+                const y1 = centerY + outerRadius.toNumber() * Math.sin(angle1);
+                const x2 = centerX + outerRadius.toNumber() * Math.cos(angle2);
+                const y2 = centerY + outerRadius.toNumber() * Math.sin(angle2);
+
+                if (i === 0) {
+                    ctx.moveTo(x1, y1);
+                } else {
+                    ctx.lineTo(x1, y1);
+                }
+                ctx.lineTo(x2, y2);
+            }
+            ctx.closePath();
+            ctx.stroke();
+
+            // 중심점 표시
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 3, 0, Math.PI * 2, false);
+            ctx.fillStyle = '#555';
+            ctx.fill();
+        }
+
+        function runArchimedes() {
+            const numSidesInput = document.getElementById('num-sides');
+            const decimalPrecisionInput = document.getElementById('decimal-precision');
+
+            let numSides = parseInt(numSidesInput.value);
+            let decimalPrecision = parseInt(decimalPrecisionInput.value);
+
+            // 입력 값 유효성 검사 및 기본값 설정
+            if (isNaN(numSides) || numSides < 3) {
+                numSides = 3;
+                numSidesInput.value = 3;
+            }
+            if (isNaN(decimalPrecision) || decimalPrecision < 0) {
+                decimalPrecision = 0;
+                decimalPrecisionInput.value = 0;
+            }
+
+            // Decimal.js의 정밀도 설정 (표시 정밀도 + 안전 여유)
+            Decimal.set({ precision: decimalPrecision + 20 }); 
+
+            drawShapes(numSides); // 도형 그리기
+
+            // 반지름 1로 계산 (수학적 편의)
+            const r = new Decimal(1);
+            // Decimal.acos(new Decimal(-1))는 Decimal.js에서 PI를 나타내는 방법
+            const piDecimal = Decimal.acos(new Decimal(-1)); 
+            const angleRad = piDecimal.div(numSides);
+
+            // 내접 정n각형의 한 변의 길이
+            const sideInscribed = new Decimal(2).mul(r).mul(Decimal.sin(angleRad)); 
+            // 내접 정n각형의 둘레
+            const perimeterInscribed = new Decimal(numSides).mul(sideInscribed);
+
+            // 외접 정n각형의 한 변의 길이
+            const sideCircumscribed = new Decimal(2).mul(r).mul(Decimal.tan(angleRad)); 
+            // 외접 정n각형의 둘레
+            const perimeterCircumscribed = new Decimal(numSides).mul(sideCircumscribed);
+
+            // 파이의 범위 계산
+            const piLowerBound = perimeterInscribed.div(new Decimal(2).mul(r));
+            const piUpperBound = perimeterCircumscribed.div(new Decimal(2).mul(r));
+
+            // 하한과 상한 값에 대한 하이라이팅 적용
+            const formattedBounds = formatAndHighlightBounds(piLowerBound.toFixed(decimalPrecision), piUpperBound.toFixed(decimalPrecision));
+            document.getElementById('pi-lower-display').innerHTML = formattedBounds.lower;
+            document.getElementById('pi-upper-display').innerHTML = formattedBounds.upper;
+            
+            // MathJax 수식 렌더링 다시 실행
+            if (window.MathJax) {
+                window.MathJax.typeset();
+            }
+        }
+
+        // 페이지 로드 시 초기 그림 및 계산 및 이벤트 리스너 설정
+        window.onload = () => {
+            const numSidesInput = document.getElementById('num-sides');
+            const decimalPrecisionInput = document.getElementById('decimal-precision');
+
+            numSidesInput.addEventListener('input', runArchimedes);
+            decimalPrecisionInput.addEventListener('input', runArchimedes);
+            
+            runArchimedes(); // 기본값 (n=6)으로 실행
+        };
+    </script>
+</body>
+</html>

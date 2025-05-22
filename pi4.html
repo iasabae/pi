@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>뉴턴 멱급수 적분으로 원주율 근사</title>
+    <script type="text/javascript" async
+      src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/decimal.js/10.4.3/decimal.min.js"></script>
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$']]
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background-color: #f0f2f5;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .container {
+            background-color: #fff;
+            padding: 30px 40px;
+            border-radius: 12px;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 900px; /* 너비 확장 */
+            margin-bottom: 20px;
+        }
+
+        .input-section {
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .input-section label {
+            font-size: 1.1em;
+            color: #555;
+        }
+
+        .input-section input[type="number"] {
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+            width: 100px; /* 너비 조정 */
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
+            transition: border-color 0.3s ease;
+        }
+
+        .input-section input[type="number"]:focus {
+            border-color: #007bff;
+            outline: none;
+        }
+
+        .results {
+            margin-top: 20px;
+            font-size: 1.2em;
+            color: #333;
+            text-align: center;
+            width: 100%;
+        }
+
+        .results p {
+            margin: 10px 0;
+        }
+
+        .results .value {
+            font-weight: bold;
+            color: #28a745;
+            font-size: 1.3em;
+        }
+        .results .comparison-section {
+            display: grid; /* Flexbox 대신 Grid 사용 */
+            grid-template-columns: 1fr 1fr; /* 2열 */
+            gap: 20px; /* 간격 */
+            width: 100%;
+            margin-top: 25px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+        .results .comparison-box {
+            background-color: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            text-align: left; /* 텍스트 왼쪽 정렬 */
+            word-wrap: break-word; /* 긴 텍스트 줄 바꿈 */
+        }
+        .results .comparison-box h4 {
+            color: #007bff;
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+            text-align: center; /* 제목 중앙 정렬 */
+        }
+        .results .comparison-box .pi-value {
+            font-size: 1.1em; /* 폰트 크기 조정 */
+            color: #333;
+        }
+        .results .comparison-box .pi-value .match {
+            color: red; /* 일치하는 부분 붉은색으로 */
+            font-weight: bold;
+        }
+        .pi-value .indent {
+            margin-left: 20px; /* 들여쓰기 */
+            display: inline-block; /* 줄바꿈은 <br>로 하고, 들여쓰기만 적용 */
+        }
+
+
+        .info {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #e9f7ef;
+            border-left: 5px solid #28a745;
+            border-radius: 8px;
+            text-align: left;
+            max-width: 900px; /* 너비 확장 */
+            line-height: 1.6;
+            color: #333;
+        }
+
+        .info h3 {
+            color: #28a745;
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+
+        .info ul {
+            list-style-type: disc;
+            margin-left: 20px;
+            padding-left: 0;
+        }
+
+        .info li {
+            margin-bottom: 5px;
+        }
+
+        .info strong {
+            color: #007bff;
+        }
+
+        .math-formula {
+            margin: 20px 0;
+            font-size: 1.1em;
+            background-color: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            overflow-x: auto; /* 수식이 길어질 경우 스크롤바 */
+        }
+    </style>
+</head>
+<body>
+    <h1>뉴턴의 멱급수 적분으로 원주율($\pi$) 근사하기</h1>
+
+    <div class="container">
+        <div class="input-section">
+            <label for="num-terms">멱급수의 항 개수 (n):</label>
+            <input type="number" id="num-terms" value="10" min="1">
+            <label for="decimal-precision">소수점 정밀도:</label>
+            <input type="number" id="decimal-precision" value="10" min="0">
+        </div>
+
+        <div class="results">
+            <p>계산에 사용된 항의 개수: <span class="value" id="num-calculated-terms">0</span>개</p>
+            <div class="comparison-section">
+                <div class="comparison-box">
+                    <h4>정적분 범위: 0부터 1까지</h4>
+                    <p>근사된 $\pi$ 값:</p>
+                    <div class="value pi-value" id="pi-from-0-to-1-approx">0.000000</div>
+                </div>
+                <div class="comparison-box">
+                    <h4>정적분 범위: 0부터 1/2까지</h4>
+                    <p>근사된 $\pi$ 값:</p>
+                    <div class="value pi-value" id="pi-from-0-to-half-approx">0.000000</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="info">
+        <h3>뉴턴의 멱급수 적분으로 원주율($\pi$) 근사 원리</h3>
+        <p>
+            뉴턴은 원의 넓이를 구하기 위해 $\sqrt{1-x^2}$ 함수를 멱급수(이항급수)로 전개한 뒤, 이를 정적분하는 방법을 사용했습니다.
+            단위원의 1사분면 넓이는 $\int_0^1 \sqrt{1-x^2} dx = \frac{\pi}{4}$ 입니다.
+        </p>
+        <div class="math-formula">
+            $$ \sqrt{1-x^2} = (1-x^2)^{1/2} $$
+            $$ = 1 - \frac{1}{2}x^2 - \frac{1}{8}x^4 - \frac{1}{16}x^6 - \frac{5}{128}x^8 - \dots $$
+            $$ = \sum_{k=0}^{\infty} \binom{1/2}{k} (-x^2)^k $$
+        </div>
+        <p>
+            각 항을 적분하면 다음과 같은 꼴이 됩니다:
+        </p>
+        <div class="math-formula">
+            $$ \int x^{2k} dx = \frac{1}{2k+1} x^{2k+1} $$
+        </div>
+        <p>
+            따라서, $\int_0^b \sqrt{1-x^2} dx$를 계산하려면, 각 항을 적분한 후 $x=b$를 대입합니다.
+        </p>
+        <h4>1. 정적분 범위: 0부터 1까지</h4>
+        <p>
+            $\int_0^1 \sqrt{1-x^2} dx = \left[ x - \frac{1}{2 \cdot 3}x^3 - \frac{1}{8 \cdot 5}x^5 - \frac{1}{16 \cdot 7}x^7 - \dots \right]_0^1$
+            $$ = 1 - \frac{1}{6} - \frac{1}{40} - \frac{1}{112} - \frac{5}{1152} - \dots = \frac{\pi}{4} $$
+            이로부터 $\pi \approx 4 \times \left( 1 - \frac{1}{6} - \frac{1}{40} - \frac{1}{112} - \frac{5}{1152} - \dots \right)$ 를 얻습니다.
+        </p>
+        <h4>2. 정적분 범위: 0부터 1/2까지</h4>
+        <p>
+            $\int_0^{1/2} \sqrt{1-x^2} dx = \left[ x - \frac{1}{6}x^3 - \frac{1}{40}x^5 - \dots \right]_0^{1/2}$
+            $$ = \frac{1}{2} - \frac{1}{6}\left(\frac{1}{2}\right)^3 - \frac{1}{40}\left(\frac{1}{2}\right)^5 - \dots $$
+            이 값은 기하학적으로 원의 넓이에서 계산하면 $\frac{\pi}{12} + \frac{\sqrt{3}}{8}$과 같습니다.
+            따라서, $\pi \approx 12 \times \left( \left( \frac{1}{2} - \frac{1}{6}\left(\frac{1}{2}\right)^3 - \frac{1}{40}\left(\frac{1}{2}\right)^5 - \dots \right) - \frac{\sqrt{3}}{8} \right)$
+            이 경우, 멱급수가 $x$가 작을수록 빠르게 수렴하므로, 0부터 1까지 적분하는 것보다 0부터 1/2까지 적분하는 것이 더 적은 항으로도 정확한 결과를 얻을 수 있습니다.
+        </p>
+        <ul>
+            <li><strong>이항계수 $\binom{n}{k}$ 계산</strong>: $\binom{n}{k} = \frac{n(n-1)\dots(n-k+1)}{k!}$ 입니다. 여기서 $n=1/2$ 입니다.</li>
+            <li>급수는 $|x| \le 1$에서 수렴하며, $|x|$가 작을수록 수렴 속도가 빠릅니다. 따라서 0부터 1/2까지 적분하는 경우가 0부터 1까지 적분하는 경우보다 더 빠르게 수렴합니다.</li>
+            <li>**20자리 줄바꿈**: 소수점 이하의 자릿수들을 20자리씩 끊어서 줄 바꿈하여 가독성을 높였습니다.</li>
+            <li>**색상 표기**: 계산된 $\pi$ 값과 실제 $\pi$ 값을 비교하여, 일치하는 정수 부분과 소수점 부분의 자릿수를 붉은색으로 표시합니다. 불일치가 발생하는 첫 번째 지점까지만 붉게 표시되므로, 근사 정확도를 시각적으로 쉽게 파악할 수 있습니다.</li>
+        </ul>
+    </div>
+
+    <script>
+        // Decimal.js의 정밀도를 충분히 높게 설정 (최대 표시 정밀도 + 안전 여유)
+        Decimal.set({ precision: 500 }); 
+
+        // 미리 정의된 고정밀 PI 값 (수백자리)
+        const HIGH_PRECISION_PI_STRING = '3.14159265358979323846264338327950288419716939937510582097494459230781640628620899862803482534211706798214808651328230664709384460955058223172535940812848111745028410270193852110555964462294895493038196442881097566593344612847564823378678316527120190914564856692346034861045432664821339360726024914127372458700660631558817488152092096282925409171536436789259036001133053054882046652138414695194151160943305727036575959195309218611738193261179310511854807446237996274956735188575272489122793818301194912983367336244065664308602139494639522473719070217986094370277053921717629317675238467481846766940513200056812714526356082778577134275778960917363717872146844090122495343014654958537105079227968925892354201995611212902196086403441815981362977477130996051870721134999999837297804995105973173281609631859502445945534690830264252230825334468503526193118817101000313783875288658753320838142061717766914730359825349042875546873115956286388235378759375195778185778053217122680661300192787661119590921642019893809525720106548586327886593615338182796823030195203530185296899577362259941389124972177528347913151557485724245415069595082953311686172785588907509838175463746493931925506040092770167113900984882401285836160356370766010471018194295559619894676783744944825537977472684710404753464620804668425906949129331367702898915210475216205696602405803815019351125338243003558764024749647326391419927260426992279678235478163600934172164121992458631503028618297455570674983850549458858692699569092721079750930295532116534498720275596023648066549911988183479775356636980742654252786255181841757467289097777279380008164706001614524919217321721477235014144197356854816136115735255213347574184946843852332390739414333454776241686251898356948556209921922218427255025425688767179049460165346680498862723279178608578438382796797668145410095388378636095068006422512520511739298489608412848862694560424196528502221066118630674427862203919494504712371378609506438445100975667104085449704780610970957599767852331599370420510112703816733620300915649934479904723402534443224971755353893755086994361567210881615967005129312961744652468725841047209727807185447162796033388540846236287955519888992176510807983568852909180705113562725899400426341829705942460144933955437807759146199343812574504639016104993132783451060935574023902718861021718054605999863414983273180470559799505';
+        const actualPiDecimal = new Decimal(HIGH_PRECISION_PI_STRING);
+        // Decimal.js의 sqrt 함수를 사용하여 고정밀도로 sqrt(3)을 계산합니다.
+        const actualSqrt3Decimal = new Decimal(3).sqrt(); 
+
+        // --- 비교, 색상 표시, 20자리 줄바꿈 함수 ---
+        function formatAndHighlightDigits(actualStr, calculatedStr, digitsPerLine = 20) {
+            let resultHtml = '';
+            let isMatchingContinuous = true; // 연속적으로 일치하는지 여부
+
+            const actualParts = actualStr.split('.');
+            const calculatedParts = calculatedStr.split('.');
+
+            const actualInt = actualParts[0];
+            const actualDec = actualParts[1] || '';
+            const calculatedInt = calculatedParts[0];
+            const calculatedDec = calculatedParts[1] || '';
+
+            // 1. 정수 부분 비교 및 하이라이팅
+            for (let i = 0; i < Math.min(actualInt.length, calculatedInt.length); i++) {
+                if (actualInt[i] === calculatedInt[i] && isMatchingContinuous) {
+                    resultHtml += `<span class="match">${calculatedInt[i]}</span>`;
+                } else {
+                    isMatchingContinuous = false;
+                    resultHtml += calculatedInt[i];
+                }
+            }
+            // 정수 부분의 남은 부분 추가 (계산된 값이 더 긴 경우)
+            if (calculatedInt.length > actualInt.length) {
+                resultHtml += calculatedInt.substring(actualInt.length);
+            }
+
+            // 소수점이 있으면 추가
+            if (calculatedStr.includes('.')) {
+                resultHtml += '.';
+            }
+
+            // 2. 소수 부분 비교 및 하이라이팅, 그리고 줄바꿈
+            for (let i = 0; i < calculatedDec.length; i++) {
+                // 20자리마다 줄바꿈 시작 (첫 소수점 바로 다음부터 20자리)
+                if (i > 0 && i % digitsPerLine === 0) {
+                    resultHtml += `<br><span class="indent"></span>`; // 들여쓰기 스팬과 줄바꿈 추가
+                }
+
+                if (actualDec[i] && actualDec[i] === calculatedDec[i] && isMatchingContinuous) {
+                    resultHtml += `<span class="match">${calculatedDec[i]}</span>`;
+                } else {
+                    isMatchingContinuous = false; // 불일치 발생, 붉은색 표시 중단
+                    resultHtml += calculatedDec[i];
+                }
+            }
+
+            return resultHtml;
+        }
+
+        // 이항계수 (alpha choose k) 계산 함수 (Decimal 객체 사용)
+        // C(alpha, k) = alpha * (alpha - 1) * ... * (alpha - k + 1) / k!
+        function binomialCoefficient(alpha, k) {
+            if (k.isZero()) return new Decimal(1);
+            let res = new Decimal(1);
+            for (let i = 0; i < k.toNumber(); i++) {
+                res = res.mul(alpha.sub(i)).div(new Decimal(i).add(1));
+            }
+            return res;
+        }
+
+        function calculateNewtonPi() {
+            const numTermsInput = document.getElementById('num-terms');
+            const decimalPrecisionInput = document.getElementById('decimal-precision');
+
+            let numTerms = parseInt(numTermsInput.value);
+            let decimalPrecision = parseInt(decimalPrecisionInput.value);
+
+            // 입력 값 유효성 검사 및 기본값 설정
+            if (isNaN(numTerms) || numTerms < 1) {
+                numTerms = 1;
+                numTermsInput.value = 1;
+            }
+            if (isNaN(decimalPrecision) || decimalPrecision < 0) {
+                decimalPrecision = 0;
+                decimalPrecisionInput.value = 0;
+            }
+
+            // Decimal.js의 정밀도 설정 (표시 정밀도 + 안전 여유)
+            Decimal.set({ precision: decimalPrecision + 5 }); 
+
+            let integral0to1Sum = new Decimal(0);
+            let integral0toHalfSum = new Decimal(0);
+
+            const alpha = new Decimal(0.5); // 1/2
+            const x_half = new Decimal(0.5); // 1/2
+
+            // k=0 항 처리 (1)
+            // x^(2*0+1) / (2*0+1) = x
+            // C(1/2, 0) = 1
+            integral0to1Sum = integral0to1Sum.add(1); // 1^1 / 1
+            integral0toHalfSum = integral0toHalfSum.add(x_half); // (1/2)^1 / 1
+
+            // k=1부터 numTerms-1까지 계산
+            for (let k = 1; k < numTerms; k++) {
+                const kDecimal = new Decimal(k);
+                const coeff = binomialCoefficient(alpha, kDecimal);
+                const sign = (k % 2 === 0) ? new Decimal(1) : new Decimal(-1); // (-1)^k
+                
+                // 적분 후 항의 형태: C(alpha, k) * sign * x^(2k+1) / (2k+1)
+                const exponent_term = new Decimal(2 * k + 1);
+
+                // 0부터 1까지 적분
+                // x=1 대입: coeff.mul(sign).div(exponent_term)
+                integral0to1Sum = integral0to1Sum.add(coeff.mul(sign).div(exponent_term));
+
+                // 0부터 1/2까지 적분
+                // x=1/2 대입: coeff.mul(sign).mul(x_half.pow(exponent_term)).div(exponent_term)
+                integral0toHalfSum = integral0toHalfSum.add(coeff.mul(sign).mul(x_half.pow(exponent_term)).div(exponent_term));
+            }
+
+            // 결과 업데이트
+            document.getElementById('num-calculated-terms').textContent = numTerms;
+
+            // 0부터 1까지 적분 결과로부터 파이 근사
+            const piFrom0To1Approx = integral0to1Sum.mul(4);
+            document.getElementById('pi-from-0-to-1-approx').innerHTML = formatAndHighlightDigits(actualPiDecimal.toFixed(decimalPrecision), piFrom0To1Approx.toFixed(decimalPrecision));
+
+            // 0부터 1/2까지 적분 결과로부터 파이 근사
+            // integral0toHalfSum = pi/12 + sqrt(3)/8 이므로, pi = 12 * (integral0toHalfSum - sqrt(3)/8)
+            const piFrom0ToHalfApprox = (integral0toHalfSum.sub(actualSqrt3Decimal.div(8))).mul(12);
+            document.getElementById('pi-from-0-to-half-approx').innerHTML = formatAndHighlightDigits(actualPiDecimal.toFixed(decimalPrecision), piFrom0ToHalfApprox.toFixed(decimalPrecision));
+            
+            // MathJax 수식 렌더링 다시 실행
+            if (window.MathJax) {
+                window.MathJax.typeset();
+            }
+        }
+
+        // 페이지 로드 시 초기 계산 및 이벤트 리스너 설정
+        window.onload = () => {
+            const numTermsInput = document.getElementById('num-terms');
+            const decimalPrecisionInput = document.getElementById('decimal-precision');
+
+            // input 이벤트에 calculateNewtonPi 함수 연결
+            numTermsInput.addEventListener('input', calculateNewtonPi);
+            decimalPrecisionInput.addEventListener('input', calculateNewtonPi);
+
+            calculateNewtonPi(); // 초기 계산 실행
+        };
+    </script>
+</body>
+</html>

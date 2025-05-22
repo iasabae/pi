@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>고정밀 파이 공식 시뮬레이션 (Decimal.js)</title>
+    <script type="text/javascript" async
+      src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/decimal.js/10.4.3/decimal.min.js"></script>
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$']]
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background-color: #f0f2f5;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .container {
+            background-color: #fff;
+            padding: 30px 40px;
+            border-radius: 12px;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 900px;
+            margin-bottom: 20px;
+        }
+
+        .input-section {
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .input-section label {
+            font-size: 1.1em;
+            color: #555;
+        }
+
+        .input-section input[type="number"] {
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+            width: 100px;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
+            transition: border-color 0.3s ease;
+        }
+
+        .input-section button {
+            padding: 10px 25px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 4px 8px rgba(0, 123, 255, 0.2);
+        }
+
+        .input-section button:hover {
+            background-color: #0056b3;
+            transform: translateY(-2px);
+        }
+
+        .input-section button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 5px rgba(0, 123, 255, 0.3);
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        .result-box {
+            background-color: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+
+        .result-box h3 {
+            color: #007bff;
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 1.4em;
+        }
+
+        .result-box p {
+            margin: 8px 0;
+            font-size: 1.1em;
+        }
+
+        .result-box .value {
+            font-weight: bold;
+            color: #28a745;
+            font-size: 1.3em;
+            word-break: break-all; /* 긴 숫자 줄바꿈 */
+        }
+        .result-box .pi-value {
+            font-size: 1.2em; /* 고정밀도 표시에 맞게 폰트 크기 조정 */
+            color: #333; /* 기본 텍스트 색상 */
+            word-wrap: break-word; /* 긴 텍스트 줄 바꿈 (줄바꿈만 제어) */
+            text-align: left; /* 숫자가 길어지므로 왼쪽 정렬 */
+            padding: 5px;
+            border: 1px solid #eee;
+            background-color: #fff;
+            border-radius: 5px;
+            overflow-x: auto; /* 가로 스크롤 가능하게 유지 */
+        }
+        .result-box .pi-value .match {
+            color: red; /* 일치하는 부분 붉은색으로 */
+            font-weight: bold;
+        }
+        .pi-value .indent {
+            margin-left: 20px; /* 들여쓰기 */
+            display: inline-block; /* 줄바꿈은 <br>로 하고, 들여쓰기만 적용 */
+        }
+
+
+        .info {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #e9f7ef;
+            border-left: 5px solid #28a745;
+            border-radius: 8px;
+            text-align: left;
+            max-width: 900px;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        .info h3 {
+            color: #28a745;
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+
+        .info ul {
+            list-style-type: disc;
+            margin-left: 20px;
+            padding-left: 0;
+        }
+
+        .info li {
+            margin-bottom: 5px;
+        }
+
+        .info strong {
+            color: #007bff;
+        }
+
+        .math-formula {
+            margin: 20px 0;
+            font-size: 1.1em;
+            background-color: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>고정밀 파이($\pi$) 공식 시뮬레이션 (Decimal.js)</h1>
+
+    <div class="container">
+        <div class="input-section">
+            <label for="num-terms">계산할 항의 개수 (k, 0부터 시작):</label>
+            <input type="number" id="num-terms" value="2" min="0">
+            <label for="decimal-precision">소수점 정밀도:</label>
+            <input type="number" id="decimal-precision" value="100" min="0"> 
+            <button onclick="calculatePiFormulas()">실행 (자동 업데이트)</button>
+        </div>
+
+        <div class="results-grid">
+            <div class="result-box">
+                <h3>라마누잔 공식</h3>
+                <p>
+                    $$ \frac{1}{\pi} = \frac{2\sqrt{2}}{9801} \sum_{k=0}^{\infty} \frac{(4k)! (1103 + 26390k)}{(k!)^4 (396)^{4k}} $$
+                </p>
+                <p>계산에 사용된 항: <span class="value" id="ramanujan-terms">0</span>개</p>
+                <p>근사된 $\pi$ 값:</p>
+                <div class="value pi-value" id="ramanujan-pi">0.0</div>
+            </div>
+
+            <div class="result-box">
+                <h3>추드노프스키 공식</h3>
+                <p>
+                    $$ \frac{1}{\pi} = 12 \sum_{k=0}^{\infty} \frac{(-1)^k (6k)! (13591409 + 545140134k)}{(3k)! (k!)^3 (640320)^{3k + 3/2}} $$
+                </p>
+                <p>계산에 사용된 항: <span class="value" id="chudnovsky-terms">0</span>개</p>
+                <p>근사된 $\pi$ 값:</p>
+                <div class="value pi-value" id="chudnovsky-pi">0.0</div>
+            </div>
+        </div>
+        <p style="font-size: 0.9em; color: #777;">(정밀도를 높게 설정하면 계산 시간이 오래 걸릴 수 있습니다.)</p>
+    </div>
+
+    <div class="info">
+        <h3>고정밀 $\pi$ 계산 원리 (Decimal.js)</h3>
+        <p>
+            기존 JavaScript의 `Number` 타입은 부동소수점 오차로 인해 약 15~17자리의 정밀도 한계를 가집니다. `decimal.js`와 같은 라이브러리는 숫자를 문자열로 내부적으로 관리하고 모든 산술 연산을 정수 연산처럼 처리하여 **임의 정밀도(arbitrary precision)**를 제공합니다.
+        </p>
+        <ul>
+            <li>`Decimal.set({ precision: N })`: 계산에 사용할 총 유효 숫자 자릿수를 설정합니다. 이 값은 계산의 정밀도를 결정합니다.</li>
+            <li>모든 숫자 상수는 `new Decimal('값')` 또는 `Decimal('값')` 형태로 `Decimal` 객체로 변환해야 합니다.</li>
+            <li>덧셈(`add`), 뺄셈(`sub`), 곱셈(`mul`), 나눗셈(`div`), 거듭제곱(`pow`), 제곱근(`sqrt`) 등 모든 연산은 `Decimal` 객체의 메서드를 통해 이루어져야 합니다.</li>
+            <li>고정밀도 계산은 일반 `Number` 타입보다 훨씬 **느립니다**. 특히 팩토리얼처럼 숫자가 급격히 커지는 계산은 자릿수가 많아질수록 기하급수적으로 느려질 수 있습니다.</li>
+            <li>추드노프스키 공식은 항당 약 14자리의 정밀도를 제공하므로, 100자리 $\pi$를 얻기 위해서는 약 7~8개의 항이 필요합니다. 라마누잔 공식은 항당 약 8자리이므로 더 많은 항이 필요합니다.</li>
+            <li>**색상 표기**: 계산된 $\pi$ 값과 실제 $\pi$ 값을 비교하여, 일치하는 정수 부분과 소수점 부분의 자릿수를 붉은색으로 표시합니다. 불일치가 발생하는 첫 번째 지점까지만 붉게 표시되므로, 근사 정확도를 시각적으로 쉽게 파악할 수 있습니다.</li>
+            <li>**20자리 줄바꿈**: 소수점 이하의 자릿수들을 20자리씩 끊어서 줄 바꿈하여 가독성을 높였습니다. 전체 자릿수가 모두 보이도록 내부 스크롤을 제거했습니다.</li>
+        </ul>
+    </div>
+
+    <script>
+        // 미리 정의된 고정밀 PI 값 (수백자리)
+        const HIGH_PRECISION_PI_STRING = '3.14159265358979323846264338327950288419716939937510582097494459230781640628620899862803482534211706798214808651328230664709384460955058223172535940812848111745028410270193852110555964462294895493038196442881097566593344612847564823378678316527120190914564856692346034861045432664821339360726024914127372458700660631558817488152092096282925409171536436789259036001133053054882046652138414695194151160943305727036575959195309218611738193261179310511854807446237996274956735188575272489122793818301194912983367336244065664308602139494639522473719070217986094370277053921717629317675238467481846766940513200056812714526356082778577134275778960917363717872146844090122495343014654958537105079227968925892354201995611212902196086403441815981362977477130996051870721134999999837297804995105973173281609631859502445945534690830264252230825334468503526193118817101000313783875288658753320838142061717766914730359825349042875546873115956286388235378759375195778185778053217122680661300192787661119590921642019893809525720106548586327886593615338182796823030195203530185296899577362259941389124972177528347913151557485724245415069595082953311686172785588907509838175463746493931925506040092770167113900984882401285836160356370766010471018194295559619894676783744944825537977472684710404753464620804668425906949129331367702898915210475216205696602405803815019351125338243003558764024749647326391419927260426992279678235478163600934172164121992458631503028618297455570674983850549458858692699569092721079750930295532116534498720275596023648066549911988183479775356636980742654252786255181841757467289097777279380008164706001614524919217321721477235014144197356854816136115735255213347574184946843852332390739414333454776241686251898356948556209921922218427255025425688767179049460165346680498862723279178608578438382796797668145410095388378636095068006422512520511739298489608412848862694560424196528502221066118630674427862203919494504712371378609506438445100975667104085449704780610970957599767852331599370420510112703816733620300915649934479904723402534443224971755353893755086994361567210881615967005129312961744652468725841047209727807185447162796033388540846236287955519888992176510807983568852909180705113562725899400426341829705942460144933955437807759146199343812574504639016104993132783451060935574023902718861021718054605999863414983273180470559799505';
+        let actualPiDecimal = new Decimal(HIGH_PRECISION_PI_STRING);
+
+        // 팩토리얼 계산 (Decimal 객체 사용)
+        function factorial(n) {
+            if (n === 0) return new Decimal(1);
+            let res = new Decimal(1);
+            for (let i = 1; i <= n; i++) {
+                res = res.mul(new Decimal(i));
+            }
+            return res;
+        }
+
+        // 라마누잔 공식 계산 (Decimal 객체 사용)
+        function calculateRamanujanPi(numTerms) {
+            let sum = new Decimal(0);
+            const const_factor_numerator = new Decimal(2).mul(Decimal.sqrt(new Decimal(2)));
+            const const_factor_denominator = new Decimal(9801);
+
+            for (let k = 0; k < numTerms; k++) {
+                const term_numerator_part1 = factorial(4 * k);
+                const term_numerator_part2 = new Decimal(1103).add(new Decimal(26390).mul(k));
+                const term_numerator = term_numerator_part1.mul(term_numerator_part2);
+
+                const term_denominator_part1 = factorial(k).pow(4);
+                const term_denominator_part2 = new Decimal(396).pow(4 * k);
+                const term_denominator = term_denominator_part1.mul(term_denominator_part2);
+
+                if (term_denominator.isZero()) {
+                    console.warn(`Ramanujan: Denominator is zero for k=${k}. Stopping sum.`);
+                    break;
+                }
+                const term = term_numerator.div(term_denominator);
+                if (term.isNaN() || !term.isFinite()) {
+                    console.warn(`Ramanujan: Term is NaN or Infinity for k=${k}. Stopping sum.`);
+                    break;
+                }
+                sum = sum.add(term);
+            }
+            
+            if (sum.isZero()) {
+                console.warn("Ramanujan: Sum of terms is zero. Cannot calculate pi.");
+                return new Decimal(0);
+            }
+            return const_factor_denominator.div(const_factor_numerator.mul(sum));
+        }
+
+        // 추드노프스키 공식 계산 (Decimal 객체 사용)
+        function calculateChudnovskyPi(numTerms) {
+            let sum_of_terms = new Decimal(0);
+            
+            const CHUD_NUMERATOR_CONST = new Decimal(426880).mul(Decimal.sqrt(new Decimal(10005)));
+            const M_VAL_POW_3 = new Decimal(640320).pow(3); 
+            
+            for (let k = 0; k < numTerms; k++) {
+                const sign = (k % 2 === 0) ? new Decimal(1) : new Decimal(-1);
+                
+                const fact6k = factorial(6 * k);
+                const fact3k = factorial(3 * k);
+                const factk_cubed = factorial(k).pow(3);
+                const M_term_pow_k = M_VAL_POW_3.pow(k);
+
+                const term_numerator_core = new Decimal(13591409).add(new Decimal(545140134).mul(k));
+                
+                const current_term_numerator = fact6k.mul(term_numerator_core);
+                const current_term_denominator = fact3k.mul(factk_cubed).mul(M_term_pow_k);
+
+                if (current_term_denominator.isZero()) {
+                    console.warn(`Chudnovsky: Denominator is zero for k=${k}. Stopping sum.`);
+                    break;
+                }
+
+                const term_value = current_term_numerator.div(current_term_denominator);
+                if (term_value.isNaN() || !term_value.isFinite()) {
+                    console.warn(`Chudnovsky: Term value is NaN or Infinity for k=${k}. Stopping sum.`);
+                    break;
+                }
+                sum_of_terms = sum_of_terms.add(sign.mul(term_value));
+            }
+
+            if (sum_of_terms.isZero()) {
+                console.warn("Chudnovsky: Sum of terms is zero. Cannot calculate pi.");
+                return new Decimal(0);
+            }
+            return CHUD_NUMERATOR_CONST.div(sum_of_terms);
+        }
+
+        // --- 비교, 색상 표시, 20자리 줄바꿈 함수 ---
+        function formatAndHighlightDigits(actualStr, calculatedStr, digitsPerLine = 20) {
+            let resultHtml = '';
+            let isMatchingContinuous = true; // 연속적으로 일치하는지 여부
+
+            const actualParts = actualStr.split('.');
+            const calculatedParts = calculatedStr.split('.');
+
+            const actualInt = actualParts[0];
+            const actualDec = actualParts[1] || '';
+            const calculatedInt = calculatedParts[0];
+            const calculatedDec = calculatedParts[1] || '';
+
+            // 1. 정수 부분 비교 및 하이라이팅
+            for (let i = 0; i < Math.min(actualInt.length, calculatedInt.length); i++) {
+                if (actualInt[i] === calculatedInt[i] && isMatchingContinuous) {
+                    resultHtml += `<span class="match">${calculatedInt[i]}</span>`;
+                } else {
+                    isMatchingContinuous = false;
+                    resultHtml += calculatedInt[i];
+                }
+            }
+            // 정수 부분의 남은 부분 추가 (계산된 값이 더 긴 경우)
+            if (calculatedInt.length > actualInt.length) {
+                resultHtml += calculatedInt.substring(actualInt.length);
+            }
+
+            // 소수점이 있으면 추가
+            if (calculatedStr.includes('.')) {
+                resultHtml += '.';
+            }
+
+            // 2. 소수 부분 비교 및 하이라이팅, 그리고 줄바꿈
+            for (let i = 0; i < calculatedDec.length; i++) {
+                // 20자리마다 줄바꿈 시작 (첫 소수점 바로 다음부터 20자리)
+                if (i > 0 && i % digitsPerLine === 0) {
+                    resultHtml += `<br><span class="indent"></span>`; // 들여쓰기 스팬과 줄바꿈 추가
+                }
+
+                if (actualDec[i] && actualDec[i] === calculatedDec[i] && isMatchingContinuous) {
+                    resultHtml += `<span class="match">${calculatedDec[i]}</span>`;
+                } else {
+                    isMatchingContinuous = false; // 불일치 발생, 붉은색 표시 중단
+                    resultHtml += calculatedDec[i];
+                }
+            }
+
+            return resultHtml;
+        }
+
+        function calculatePiFormulas() {
+            const numTermsInput = document.getElementById('num-terms');
+            const decimalPrecisionInput = document.getElementById('decimal-precision');
+
+            let numTerms = parseInt(numTermsInput.value);
+            // 정밀도 0을 허용
+            let decimalPrecision = parseInt(decimalPrecisionInput.value); 
+
+            if (isNaN(numTerms) || numTerms < 0) {
+                numTerms = 0;
+                numTermsInput.value = 0;
+            }
+            // decimalPrecision의 유효성 검사에서 0을 허용
+            if (isNaN(decimalPrecision) || decimalPrecision < 0) { 
+                decimalPrecision = 0; // 0으로 설정 가능
+                decimalPrecisionInput.value = 0;
+            }
+
+            // Decimal.js의 정밀도 설정 (사용자 입력 정밀도 + 안전 여유)
+            // decimalPrecision이 0일 경우 Decimal.js가 내부적으로 유효 숫자를 처리하므로,
+            // 0 + 10으로 설정해도 문제 없습니다.
+            Decimal.set({ precision: decimalPrecision + 10 }); 
+
+            document.getElementById('ramanujan-terms').textContent = numTerms;
+            document.getElementById('chudnovsky-terms').textContent = numTerms;
+
+            // 라마누잔 공식
+            const ramanujanPi = calculateRamanujanPi(numTerms + 1);
+            const ramanujanPiStr = ramanujanPi.toFixed(decimalPrecision); // 여기에 decimalPrecision 적용
+            const actualPiStr = actualPiDecimal.toFixed(decimalPrecision); // 비교를 위해 실제 PI 값은 여전히 필요
+            document.getElementById('ramanujan-pi').innerHTML = formatAndHighlightDigits(actualPiStr, ramanujanPiStr);
+
+            // 추드노프스키 공식
+            const chudnovskyPi = calculateChudnovskyPi(numTerms + 1);
+            const chudnovskyPiStr = chudnovskyPi.toFixed(decimalPrecision); // 여기에 decimalPrecision 적용
+            document.getElementById('chudnovsky-pi').innerHTML = formatAndHighlightDigits(actualPiStr, chudnovskyPiStr);
+
+            console.log(`\n--- 고정밀 파이 공식 시뮬레이션 (항 개수: ${numTerms}, 정밀도: ${decimalPrecision}) ---`);
+            console.log(`실제 파이: ${actualPiDecimal.toFixed(decimalPrecision)}`);
+            console.log(`--- 라마누잔 공식 ---`);
+            console.log(`근사된 파이: ${ramanujanPi.toFixed(decimalPrecision)}`);
+            console.log(`오차: ${actualPiDecimal.sub(ramanujanPi).abs().toFixed(decimalPrecision)}`);
+
+            console.log(`--- 추드노프스키 공식 ---`);
+            console.log(`근사된 파이: ${chudnovskyPi.toFixed(decimalPrecision)}`);
+            console.log(`오차: ${actualPiDecimal.sub(chudnovskyPi).abs().toFixed(decimalPrecision)}`);
+
+            if (window.MathJax) {
+                window.MathJax.typeset();
+            }
+        }
+
+        // 페이지 로드 시 초기 계산 및 이벤트 리스너 설정
+        window.onload = () => {
+            const numTermsInput = document.getElementById('num-terms');
+            const decimalPrecisionInput = document.getElementById('decimal-precision');
+
+            numTermsInput.addEventListener('input', calculatePiFormulas);
+            decimalPrecisionInput.addEventListener('input', calculatePiFormulas);
+
+            calculatePiFormulas(); // 초기 계산 실행
+        };
+    </script>
+</body>
+</html>
