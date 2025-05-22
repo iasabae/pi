@@ -3,17 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>원주율(π) 근사 방법</title>
+    <title>원주율(π) 근사 방법 탐구</title>
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+    <script type="text/javascript" async
+      src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
+    </script>
+    <script>
+        // MathJax 설정: 인라인 수식 '$...$'와 블록 수식 '$$...$$' 인식
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$']]
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
     <style>
+        :root {
+            --primary-color: #4CAF50; /* 진한 초록색 */
+            --secondary-color: #66BB6A; /* 밝은 초록색 */
+            --background-color: #E8F5E9; /* 아주 연한 초록색 배경 */
+            --text-color: #212121; /* 어두운 회색 텍스트 */
+            --light-text-color: #424242; /* 중간 회색 텍스트 */
+            --card-background: #FFFFFF;
+            --shadow-light: 0 4px 15px rgba(0, 0, 0, 0.08);
+            --shadow-hover: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Lato', sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             min-height: 100vh;
-            background-color: #eef2f7;
-            color: #333;
+            background-color: var(--background-color);
+            color: var(--text-color);
             margin: 0;
             padding: 20px;
             box-sizing: border-box;
@@ -21,73 +48,88 @@
         }
 
         .container {
-            background-color: #ffffff;
-            padding: 40px 50px;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            background-color: var(--card-background);
+            padding: 50px 60px;
+            border-radius: 20px;
+            box-shadow: var(--shadow-light);
             max-width: 900px;
             width: 100%;
+            transition: box-shadow 0.3s ease;
+        }
+
+        .container:hover {
+            box-shadow: var(--shadow-hover);
         }
 
         h1 {
-            color: #2c3e50;
-            margin-bottom: 20px;
-            font-size: 2.5em;
-            letter-spacing: -0.5px;
+            font-family: 'Poppins', sans-serif;
+            color: var(--primary-color);
+            margin-bottom: 25px;
+            font-size: 3em;
+            letter-spacing: -1px;
+            line-height: 1.2;
         }
 
         p {
-            font-size: 1.1em;
-            line-height: 1.6;
-            color: #555;
-            margin-bottom: 40px;
+            font-size: 1.15em;
+            line-height: 1.8;
+            color: var(--light-text-color);
+            margin-bottom: 50px;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
         }
 
         .button-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
+            display: flex;
+            flex-direction: column; /* 한 줄에 하나씩 배치 */
+            gap: 20px; /* 버튼 사이 간격 */
             margin-top: 30px;
         }
 
         .method-button {
             display: block;
-            padding: 20px 25px;
-            background-color: #007bff;
+            padding: 20px 30px;
+            background-color: var(--primary-color);
             color: white;
             text-decoration: none;
-            border-radius: 10px;
-            font-size: 1.2em;
-            font-weight: bold;
+            border-radius: 12px;
+            font-size: 1.3em;
+            font-family: 'Poppins', sans-serif;
+            font-weight: 600;
             transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
-            box-shadow: 0 4px 10px rgba(0, 123, 255, 0.2);
+            box-shadow: 0 6px 15px rgba(76, 175, 80, 0.3); /* primary-color 기반 그림자 */
             border: none;
             cursor: pointer;
+            width: 100%; /* 너비를 100%로 설정하여 한 줄에 하나씩 정렬 */
+            max-width: 400px; /* 버튼 최대 너비 */
+            margin: 0 auto; /* 가운데 정렬 */
         }
 
         .method-button:hover {
-            background-color: #0056b3;
-            transform: translateY(-3px);
-            box-shadow: 0 8px 20px rgba(0, 123, 255, 0.3);
+            background-color: var(--secondary-color);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(76, 175, 80, 0.4);
         }
 
         .method-button:active {
             transform: translateY(0);
-            box-shadow: 0 4px 10px rgba(0, 123, 255, 0.2);
+            box-shadow: 0 4px 10px rgba(76, 175, 80, 0.2);
         }
 
         .footer {
-            margin-top: 50px;
+            margin-top: 60px;
             font-size: 0.9em;
-            color: #777;
+            color: var(--light-text-color);
+            opacity: 0.8;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>원주율($\pi$) 근사 다양한 방법들</h1>
+        <h1>원주율($\pi$) 근사 방법 탐구</h1>
         <p>
-            수학에서 가장 신비롭고 중요한 상수 중 하나인 원주율($\pi$)은 고대부터 현대에 이르기까지 수많은 방법으로 그 값을 근사하려는 노력이 있었습니다. 
+            수학에서 가장 신비롭고 중요한 상수 중 하나인 **원주율($\pi$)**은 고대부터 현대에 이르기까지 수많은 방법으로 그 값을 근사하려는 노력이 있었습니다. 
             이 페이지에서는 다양한 시대와 접근 방식에 따른 $\pi$ 근사 방법들을 시각적으로 경험하고 이해할 수 있도록 구성했습니다.
             각 버튼을 클릭하여 흥미로운 $\pi$의 세계를 탐험해 보세요!
         </p>
@@ -102,7 +144,7 @@
     </div>
 
     <footer class="footer">
-        &copy; 2023. 원주율 근사 프로젝트. All rights reserved.
+        &copy; 2024. 원주율 근사 프로젝트. All rights reserved.
     </footer>
 </body>
 </html>
