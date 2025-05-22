@@ -2,174 +2,251 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <title>π 근사 수열 계산기</title>
+  <title>π 근사 시뮬레이션</title>
   <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/decimal.js@10/decimal.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
   <style>
     body {
-      font-family: 'Arial', sans-serif;
-      background-color: #f0f0f0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
+      font-family: Arial, sans-serif;
+      background: #f0f0f0;
+      padding: 20px;
+      max-width: 900px;
+      margin: auto;
       text-align: center;
     }
-
-    input[type="text"], input[type="number"] {
-      font-size: 18px;
-      padding: 8px;
-      margin: 5px;
-      text-align: center;
+    .toolbar { margin-bottom: 10px; }
+    .toolbar button {
+      font-size: 18px; margin-right: 5px; padding: 5px 10px;
     }
-
-    #formula {
-      width: 600px;
-      height: 40px;
+    textarea#formula {
+      width: 100%; height: 80px; font-size: 18px;
+      padding: 8px; box-sizing: border-box; resize: vertical;
     }
-
-    #approxExpr {
-      width: 300px;
-      height: 30px;
+    input, button {
+      font-size: 18px; padding: 6px; margin: 4px;
+      box-sizing: border-box; text-align: center;
     }
-
+    input[type="number"] { width: 80px; }
+    input#precision { width: 100px; }
     .controls {
       margin-top: 15px;
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      justify-content: center;
+      display: flex; justify-content: center; align-items: center; gap: 10px;
     }
-
-    button {
-      font-size: 20px;
-      width: 40px;
-      height: 40px;
-    }
-
-    #result {
-      margin-top: 30px;
-      font-size: 36px;
-      word-break: break-word;
-    }
-
-    .match {
-      color: red;
-    }
-
+    button.nav { width: 40px; height: 40px; }
     #formula-display, #approx-display {
-      font-size: 26px;
-      margin-top: 15px;
+      font-size: 24px; margin-top: 15px;
     }
+    #result { margin-top: 30px; }
+    #result pre {
+      font-family: 'Courier New', monospace;
+      font-size: 28px;
+      line-height: 1.2;
+      text-align: left;
+      display: inline-block;
+      margin: 0;
+    }
+    .match { color: red; }
   </style>
 </head>
 <body>
   <h1>π 근사 수열 계산기</h1>
 
-  <div>
-    <label>JavaScript 수식 (항):</label><br>
-    <input type="text" id="formula"
-           value="4 * (-1)**(n+1) / (2*n - 1)"
-           oninput="calculate(); renderFormula();"><br>
-
-    <label>근삿값 수식 (예: 1/s):</label><br>
-    <input type="text" id="approxExpr"
-           value="1/s"
-           oninput="calculate(); renderFormula();"><br>
-
-    <div id="formula-display"></div>
-    <div id="approx-display"></div>
+  <!-- 툴바 -->
+  <div class="toolbar">
+    <button data-insert="^{}">^ (지수)</button>
+    <button data-insert="\\sqrt{}">√</button>
+    <button data-insert="()">( )</button>
+    <button data-insert="*">×</button>
+    <button data-insert="/">÷</button>
+    <button data-insert="factorial()">! (팩토리얼)</button>
+    <button data-insert="\\frac{}{}">분수</button>
   </div>
 
+  <!-- 급수 부분 -->
+  <div>
+    <label><strong>급수 부분 (JavaScript 항):</strong></label><br>
+    <textarea id="formula" oninput="calculate(); renderFormula();">
+(2 * Math.sqrt(2) / 9801) * (factorial(4*n) * (1103 + 26390*n)) / (factorial(n)**4 * 396**(4*n))
+    </textarea>
+  </div>
+
+  <!-- 근삿값 식 + 정밀도 설정 -->
+  <div>
+    <label><strong>근삿값 식</strong> (기본: s)</label>
+    <input type="text" id="approxExpr" value="s" oninput="calculate(); renderFormula();">
+    <label><strong>소수점 자리</strong></label>
+    <input type="number" id="precision" value="50" min="1" max="500"
+           onchange="calculate(); renderFormula();">
+  </div>
+
+  <!-- LaTeX 프리뷰 -->
+  <div id="formula-display"></div>
+  <div id="approx-display"></div>
+
+  <!-- n₀, N 조정 -->
   <div class="controls">
     <label>n₀:</label>
-    <input type="number" id="startN" value="1" min="1" onchange="calculate(); renderFormula();">
-
-    <label> N:</label>
-    <button onclick="changeN(-1)">−</button>
-    <input type="number" id="endN" value="10" min="1" onchange="calculate(); renderFormula();">
-    <button onclick="changeN(1)">＋</button>
+    <input type="number" id="startN" value="0" min="0"
+           onchange="calculate(); renderFormula();">
+    <label>N:</label>
+    <button class="nav" onclick="changeN(-1)">−</button>
+    <input type="number" id="endN" value="0" min="0"
+           onchange="calculate(); renderFormula();">
+    <button class="nav" onclick="changeN(1)">＋</button>
   </div>
 
+  <!-- 결과 -->
   <div id="result"></div>
 
-  <script>
-    function factorial(x) {
-      if (x < 0) return NaN;
-      if (x === 0 || x === 1) return 1;
-      let result = 1;
-      for (let i = 2; i <= x; i++) result *= i;
-      return result;
+<script>
+// Decimal factorial
+function factorialDecimal(n) {
+  let r = new Decimal(1);
+  for (let i = 2; i <= n; i++) r = r.times(i);
+  return r;
+}
+
+// Toolbar insert
+document.querySelectorAll('.toolbar button').forEach(btn => {
+  btn.onclick = () => {
+    const ta = document.getElementById('formula'), ins = btn.dataset.insert;
+    const s = ta.selectionStart, e = ta.selectionEnd;
+    ta.value = ta.value.slice(0,s) + ins + ta.value.slice(e);
+    if (ins.includes('{}')) {
+      const p = s + ins.indexOf('{}') + 1;
+      ta.selectionStart = ta.selectionEnd = p;
+    } else {
+      ta.selectionStart = ta.selectionEnd = s + ins.length;
     }
+    ta.focus(); calculate(); renderFormula();
+  };
+});
 
-    function changeN(delta) {
-      let current = parseInt(document.getElementById("endN").value);
-      current += delta;
-      if (current < 1) current = 1;
-      document.getElementById("endN").value = current;
-      calculate();
-      renderFormula();
+// Change N
+function changeN(d) {
+  const s0 = parseInt(startN.value, 10);
+  let end = parseInt(endN.value, 10) + d;
+  if (end < s0) end = s0;
+  endN.value = end;
+  calculate(); renderFormula();
+}
+
+// JS → LaTeX
+function toLatex(js) {
+  return js
+    .replace(/\*\*\(\s*([^)]+?)\s*\)/g, '^{$1}')
+    .replace(/\*\*([0-9a-zA-Z]+)/g, '^{$1}')
+    .replace(/factorial\(\s*([^)]+?)\s*\)/g, '{$1}!')
+    .replace(/Math\.sqrt\(\s*([^)]+?)\s*\)/g, '\\sqrt{$1}')
+    .replace(/\*/g, ' \\cdot ')
+    .replace(/\(/g, '\\left(')
+    .replace(/\)/g, '\\right)');
+}
+
+// Render preview
+function renderFormula() {
+  const raw   = document.getElementById('formula').value.trim();
+  const start = document.getElementById('startN').value;
+  const end   = document.getElementById('endN').value;
+  const latex = toLatex(raw);
+  document.getElementById('formula-display').innerHTML =
+    `\\(\\displaystyle \\sum_{n=${start}}^{${end}} ${latex}\\)`;
+  document.getElementById('approx-display').innerHTML =
+    `\\(\\mathrm{approx}= ${document.getElementById('approxExpr').value}\\)`;
+  MathJax.typeset();
+}
+
+// Convert approx expression to Decimal code
+function decimalExpr(str) {
+  str = str.trim();
+  if (str === 's') return 's';
+  if (/^1\s*\/\s*s$/.test(str)) return 'new Decimal(1).div(s)';
+  let e = str.replace(/(\d+(\.\d+)?)/g, 'new Decimal($1)');
+  e = e.replace(/\s*\/\s*/g, '.div(')
+       .replace(/\s*\*\s*/g, '.times(')
+       .replace(/\s*\+\s*/g, '.plus(')
+       .replace(/\s*-\s*/g, '.minus(');
+  e = e.replace(/\.div\(/g, ').div(')
+       .replace(/\.times\(/g, ').times(')
+       .replace(/\.plus\(/g, ').plus(')
+       .replace(/\.minus\(/g, ').minus(');
+  return e;
+}
+
+// Calculate
+function calculate() {
+  const s0   = parseInt(startN.value, 10);
+  const N    = parseInt(endN.value, 10);
+  const prec = parseInt(precision.value, 10);
+  const extra=20 + 15*(N - s0);
+  Decimal.set({ precision: prec + extra });
+
+  let s = new Decimal(0);
+  for (let n = s0; n <= N; n++) {
+    const num   = factorialDecimal(4*n)
+                    .times(new Decimal(1103).plus(new Decimal(26390).times(n)));
+    const den   = factorialDecimal(n).pow(4)
+                    .times(new Decimal(396).pow(4*n));
+    const coeff = new Decimal(2).times(new Decimal(2).sqrt()).div(9801);
+    s = s.plus(coeff.times(num).div(den));
+  }
+
+  const approxStr = eval(decimalExpr(document.getElementById('approxExpr').value))
+                      .toFixed(prec);
+
+  // split integer and fraction
+  const [intPart, fracPart=''] = approxStr.split('.');
+  // build 30-digit lines
+  const lines = [];
+  for (let i = 0; i < fracPart.length; i += 30) {
+    lines.push(fracPart.substr(i, 30).padEnd(30, ' '));
+  }
+  // highlight matches against true pi
+   // 1) 먼저, 시작부터 연속 일치하는 길이(matchLen)를 계산
+  const truePi = Decimal.acos(-1).toFixed(prec);
+  let matchLen = 0;
+  const fullA = intPart + '.' + lines.join('');  // int+소수 전부 이어 붙인 문자열
+  while (matchLen < fullA.length && fullA[matchLen] === truePi[matchLen]) {
+    matchLen++;
+  }
+
+  // 2) 강조 로직: idx < matchLen 인 경우에만 붉게
+  let formatted = '<pre>';
+  // 정수부 + 첫 줄 소수
+  formatted += '<span class="match">' + intPart + '</span>.';
+  for (let i = 0; i < 30; i++) {
+    const idx = intPart.length + 1 + i;
+    const ch = lines[0][i];
+    formatted += (idx < matchLen
+      ? `<span class="match">${ch}</span>`
+      : ch);
+  }
+  formatted += '\n';
+  
+  // subsequent lines
+  const indent = ' '.repeat(intPart.length + 1);
+  for (let ln = 1; ln < lines.length; ln++) {
+    formatted += indent;
+    for (let i = 0; i < 30; i++) {
+      const idx = intPart.length + 1 + ln*30 + i;
+      const ch = lines[ln][i];
+      formatted += (idx < matchLen
+        ? `<span class="match">${ch}</span>`
+        : ch);
     }
+    formatted += '\n';
+  }
+  formatted += '</pre>';
 
-    function renderFormula() {
-      const f = document.getElementById("formula").value;
-      const a = document.getElementById("approxExpr").value;
-      const n0 = document.getElementById("startN").value;
-      const N  = document.getElementById("endN").value;
+  document.getElementById('result').innerHTML =
+    `<div><strong>근삿값:</strong></div>${formatted}`;
+}
 
-      // 간단 치환: JS 식 → LaTeX
-      let latexF = f
-        .replace(/\*\*/g, '^')
-        .replace(/Math\.sqrt\(([^)]*)\)/g, '\\sqrt{$1}')
-        .replace(/factorial\(([^)]*)\)/g, '($1)!')
-        .replace(/\*/g, ' \\cdot ')
-        .replace(/\/ /g, '/')
-        .replace(/\(/g, '(')
-        .replace(/\)/g, ')');
-
-      const sumTex = `\\displaystyle \\sum_{n=${n0}}^{${N}} ${latexF}`;
-      document.getElementById("formula-display").innerHTML = `\\(${sumTex}\\)`;
-      document.getElementById("approx-display").innerHTML  = `\\(\\mathrm{approx} = ${a}\\)`;
-      MathJax.typeset();
-    }
-
-    function calculate() {
-      const formula    = document.getElementById("formula").value;
-      const approxExpr = document.getElementById("approxExpr").value;
-      const start = parseInt(document.getElementById("startN").value);
-      const end   = parseInt(document.getElementById("endN").value);
-      let s = 0;
-
-      try {
-        for (let n = start; n <= end; n++) {
-          s += eval(formula);  // 급수항 합산
-        }
-        // 사용자가 정의한 근삿값 식에 s를 대입
-        const approx = eval(approxExpr.replace(/s/g, '('+s+')'));
-        const approxStr = approx.toFixed(30);
-        const piStr     = Math.PI.toFixed(30);
-
-        // 일치 부분 강조
-        let highlighted = '';
-        for (let i = 0; i < approxStr.length; i++) {
-          if (approxStr[i] === piStr[i]) highlighted += `<span class="match">${approxStr[i]}</span>`;
-          else { highlighted += approxStr.slice(i); break; }
-        }
-
-        document.getElementById("result").innerHTML = `
-          <div><strong>근사값: </strong>${highlighted}</div>
-          <div style="font-size:24px; margin-top:10px;"><strong>π: </strong>${piStr}</div>
-        `;
-      } catch (e) {
-        document.getElementById("result").innerHTML = "⚠️ 수식을 정확히 입력하세요.";
-      }
-    }
-
-    window.onload = () => {
-      calculate();
-      renderFormula();
-    };
-  </script>
+window.onload = () => {
+  calculate();
+  renderFormula();
+};
+</script>
 </body>
 </html>
