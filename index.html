@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>π 근사 수열 계산기</title>
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      background-color: #f0f0f0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      text-align: center;
+    }
+
+    input[type="text"], input[type="number"] {
+      font-size: 18px;
+      padding: 8px;
+      margin: 5px;
+      text-align: center;
+    }
+
+    #formula {
+      width: 600px;
+      height: 40px;
+    }
+
+    #approxExpr {
+      width: 300px;
+      height: 30px;
+    }
+
+    .controls {
+      margin-top: 15px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: center;
+    }
+
+    button {
+      font-size: 20px;
+      width: 40px;
+      height: 40px;
+    }
+
+    #result {
+      margin-top: 30px;
+      font-size: 36px;
+      word-break: break-word;
+    }
+
+    .match {
+      color: red;
+    }
+
+    #formula-display, #approx-display {
+      font-size: 26px;
+      margin-top: 15px;
+    }
+  </style>
+</head>
+<body>
+  <h1>π 근사 수열 계산기</h1>
+
+  <div>
+    <label>JavaScript 수식 (항):</label><br>
+    <input type="text" id="formula"
+           value="4 * (-1)**(n+1) / (2*n - 1)"
+           oninput="calculate(); renderFormula();"><br>
+
+    <label>근삿값 수식 (예: 1/s):</label><br>
+    <input type="text" id="approxExpr"
+           value="1/s"
+           oninput="calculate(); renderFormula();"><br>
+
+    <div id="formula-display"></div>
+    <div id="approx-display"></div>
+  </div>
+
+  <div class="controls">
+    <label>n₀:</label>
+    <input type="number" id="startN" value="1" min="1" onchange="calculate(); renderFormula();">
+
+    <label> N:</label>
+    <button onclick="changeN(-1)">−</button>
+    <input type="number" id="endN" value="10" min="1" onchange="calculate(); renderFormula();">
+    <button onclick="changeN(1)">＋</button>
+  </div>
+
+  <div id="result"></div>
+
+  <script>
+    function factorial(x) {
+      if (x < 0) return NaN;
+      if (x === 0 || x === 1) return 1;
+      let result = 1;
+      for (let i = 2; i <= x; i++) result *= i;
+      return result;
+    }
+
+    function changeN(delta) {
+      let current = parseInt(document.getElementById("endN").value);
+      current += delta;
+      if (current < 1) current = 1;
+      document.getElementById("endN").value = current;
+      calculate();
+      renderFormula();
+    }
+
+    function renderFormula() {
+      const f = document.getElementById("formula").value;
+      const a = document.getElementById("approxExpr").value;
+      const n0 = document.getElementById("startN").value;
+      const N  = document.getElementById("endN").value;
+
+      // 간단 치환: JS 식 → LaTeX
+      let latexF = f
+        .replace(/\*\*/g, '^')
+        .replace(/Math\.sqrt\(([^)]*)\)/g, '\\sqrt{$1}')
+        .replace(/factorial\(([^)]*)\)/g, '($1)!')
+        .replace(/\*/g, ' \\cdot ')
+        .replace(/\/ /g, '/')
+        .replace(/\(/g, '(')
+        .replace(/\)/g, ')');
+
+      const sumTex = `\\displaystyle \\sum_{n=${n0}}^{${N}} ${latexF}`;
+      document.getElementById("formula-display").innerHTML = `\\(${sumTex}\\)`;
+      document.getElementById("approx-display").innerHTML  = `\\(\\mathrm{approx} = ${a}\\)`;
+      MathJax.typeset();
+    }
+
+    function calculate() {
+      const formula    = document.getElementById("formula").value;
+      const approxExpr = document.getElementById("approxExpr").value;
+      const start = parseInt(document.getElementById("startN").value);
+      const end   = parseInt(document.getElementById("endN").value);
+      let s = 0;
+
+      try {
+        for (let n = start; n <= end; n++) {
+          s += eval(formula);  // 급수항 합산
+        }
+        // 사용자가 정의한 근삿값 식에 s를 대입
+        const approx = eval(approxExpr.replace(/s/g, '('+s+')'));
+        const approxStr = approx.toFixed(30);
+        const piStr     = Math.PI.toFixed(30);
+
+        // 일치 부분 강조
+        let highlighted = '';
+        for (let i = 0; i < approxStr.length; i++) {
+          if (approxStr[i] === piStr[i]) highlighted += `<span class="match">${approxStr[i]}</span>`;
+          else { highlighted += approxStr.slice(i); break; }
+        }
+
+        document.getElementById("result").innerHTML = `
+          <div><strong>근사값: </strong>${highlighted}</div>
+          <div style="font-size:24px; margin-top:10px;"><strong>π: </strong>${piStr}</div>
+        `;
+      } catch (e) {
+        document.getElementById("result").innerHTML = "⚠️ 수식을 정확히 입력하세요.";
+      }
+    }
+
+    window.onload = () => {
+      calculate();
+      renderFormula();
+    };
+  </script>
+</body>
+</html>
